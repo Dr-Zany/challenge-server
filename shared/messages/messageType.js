@@ -4,6 +4,14 @@ import {CardColor} from '../deck/cardColor';
 import {SessionType} from '../session/sessionType';
 
 export const MessageType = {
+    BROADCAST_WIIS: {
+        name: 'BROADCAST_WIIS',
+        constraints: {
+            'type': { presence: true },
+            'data.allWiis': { presence: true },
+            'data.winningWiis': { presence: true }
+        }
+    },
     REQUEST_PLAYER_NAME: {
         name: 'REQUEST_PLAYER_NAME'
     },

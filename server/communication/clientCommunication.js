@@ -1,7 +1,7 @@
 import * as messages from '../../shared/messages/messages';
 import {MessageType} from '../../shared/messages/messageType';
 import validate from 'validate.js';
-import {Logger} from './../logger';
+import {Logger as logger, Logger} from './../logger';
 
 const ClientCommunication = {
     toJSON(object) {
@@ -68,6 +68,10 @@ const ClientCommunication = {
 
     broadcast(clients, messageType, ...data) {
         Logger.debug('<-- Start Broadcast: ');
+        if (messageType.name === 'BROADCAST_WIIS') {
+            logger.info('<-- Received Broadcast: ' + messageType.name);
+            logger.info(...data);
+        }
         clients.forEach((client) => {
             this.send(client, messageType, ...data);
         });

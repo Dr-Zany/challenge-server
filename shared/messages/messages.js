@@ -207,8 +207,20 @@ function createError(data) {
     }
 }
 
+function createBroadcastWiis(winningWiis, allWiis) {
+    return {
+        type: MessageType.BROADCAST_WIIS.name,
+        data: {
+            allWiis,
+            winningWiis,
+        }
+    }
+}
+
 export function create(messageType, ...data) {
     switch (messageType) {
+        case MessageType.BROADCAST_WIIS.name:
+            return createBroadcastWiis(...data);
         case MessageType.REQUEST_PLAYER_NAME.name:
             return createRequestPlayerName();
         case MessageType.CHOOSE_PLAYER_NAME.name:

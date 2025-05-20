@@ -54,6 +54,10 @@ const ClientApi = {
         this.clientCommunication.broadcast(this.clients, MessageType.BROADCAST_TRUMPF.name, gameType);
     },
 
+    broadcastWiis(winningWiis, allWiis) {
+        this.clientCommunication.broadcast(this.clients, MessageType.BROADCAST_WIIS.name, winningWiis, allWiis);
+    },
+
     broadcastCardPlayed(playedCards) {
         this.clientCommunication.broadcast(this.clients, MessageType.PLAYED_CARDS.name, playedCards);
     },

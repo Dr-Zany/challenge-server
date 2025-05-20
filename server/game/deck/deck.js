@@ -3,8 +3,10 @@
 import _ from 'lodash';
 import {CardColor} from './../../../shared/deck/cardColor';
 import * as Card from './../../../shared/deck/card';
+import {Logger as logger} from '../../logger';
 
 const cards = Array.from(new Array(36), (x, i) => i).map((element, index) => {
+    logger.info('aaaaa')
     let cardStep = Math.floor(index / 4) + 6;
     let cardColor = Object.keys(CardColor)[index % 4];
 
