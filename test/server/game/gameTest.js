@@ -7,6 +7,7 @@ import * as ClientApi from '../../../server/communication/clientApi';
 import * as Cycle from '../../../server/game/cycle/cycle';
 import sinon from 'sinon';
 import * as TestDataCreator from '../../testDataCreator';
+import {Logger as logger} from '../../../server/logger';
 
 describe('Game', function () {
     let clientApi = ClientApi.create();
@@ -220,3 +221,65 @@ describe('Game', function () {
 
 });
 
+
+describe('checkWeise', () => {
+    const makeCard = (num, color) => Card.create(num, CardColor[color]);
+
+    let game;
+    beforeEach(() => {
+        // Vier Spieler, zwei Teams
+        const players = [
+            { id: 'p1', team: 'A', cards: [], score: 0, clientApi: {} },
+            { id: 'p2', team: 'B', cards: [], score: 0, clientApi: {} },
+            { id: 'p3', team: 'A', cards: [], score: 0, clientApi: {} },
+            { id: 'p4', team: 'B', cards: [], score: 0, clientApi: {} }
+        ];
+        game = game.create({ mode: 'TRUMPF', trumpfColor: 'DIAMONDS' }, players, null);
+        logger.info('logging gaaame')
+        logger.info(game)
+        // Stub clientApi.notifyWeise
+    });
+
+    it('should detect a 3-card sequence and award 20 points', () => {
+        // p1 has 9,10,11 of clubs (non-trump)
+        game.players[0].cards = [
+            makeCard(9,'CLUBS'), makeCard(10,'CLUBS'), makeCard(11,'CLUBS')
+        ];
+        game.checkWeise();
+        expect(game.allWeiseMap.get('p1')).toHaveLength(1);
+        expect(game.winningWeiseMap.get('p1')).toEqual([
+            makeCard(9,'CLUBS'), makeCard(10,'CLUBS'), makeCard(11,'CLUBS')
+        ]);
+        expect(game.players[0].score).toBe(20);
+    });
+
+    it('should detect a stoeck in trumpf and award 20 points', () => {
+        // p2 has Ober and Koenig of diamonds (trump)
+        game.players[1].cards = [
+            makeCard(12,'DIAMONDS'), makeCard(13,'DIAMONDS')
+        ];
+        game.checkWeise();
+        expect(game.winningWeiseMap.get('p2')).toEqual([
+            makeCard(12,'DIAMONDS'), makeCard(13,'DIAMONDS')
+        ]);
+        expect(game.players[1].score).toBe(20);
+    });
+
+    it('should detect four-of-a-kind Under and award 200 points', () => {
+        // p3 has four Under (Bauers) of all suits
+        game.players[2].cards = [
+            makeCard(11,'HEARTS'), makeCard(11,'DIAMONDS'), makeCard(11,'CLUBS'), makeCard(11,'SPADES')
+        ];
+        game.checkWeise();
+        expect(game.winningWeiseMap.get('p3')).toHaveLength(4);
+        expect(game.players[2].score).toBe(200);
+    });
+
+    it('should handle tie and throw error when undecided', () => {
+        // p1 and p3 both have same 3-card sequence
+        const seq = [makeCard(7,'SPADES'), makeCard(8,'SPADES'), makeCard(9,'SPADES')];
+        game.players[0].cards = seq;
+        game.players[2].cards = seq;
+        expect(() => game.checkWeise()).toThrow(/Mehrere unentschiedene Sieger/);
+    });
+});

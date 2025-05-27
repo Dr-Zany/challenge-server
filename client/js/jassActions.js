@@ -197,11 +197,20 @@ export default {
         });
     },
 
+    broadcastWiis: (stich) => {
+        JassAppDispatcher.handleServerAction({
+            actionType: JassAppConstants.BROADCAST_WIIS,
+            data: stich
+        });
+    },
+
     broadcastGameFinished: () => {
         JassAppDispatcher.handleServerAction({
             actionType: JassAppConstants.BROADCAST_GAME_FINISHED
         });
     },
+
+
 
     adjustSpectatorSpeed: (speedInMs) => {
         JassAppDispatcher.handleViewAction({

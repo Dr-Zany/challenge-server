@@ -6,6 +6,7 @@ import {Logger as logger, Logger} from './../logger';
 const ClientCommunication = {
     toJSON(object) {
         return JSON.stringify(object);
+
     },
 
     fromJSON(jsonAsString) {
@@ -61,17 +62,12 @@ const ClientCommunication = {
     send(client, messageType, ...data) {
         if (client.readyState === 1) {
             let messageToSend = this.toJSON(messages.create(messageType, ...data));
-            Logger.debug('<-- Send Message: ' + messageToSend);
             client.send(messageToSend);
         }
     },
 
     broadcast(clients, messageType, ...data) {
         Logger.debug('<-- Start Broadcast: ');
-        if (messageType.name === 'BROADCAST_WIIS') {
-            logger.info('<-- Received Broadcast: ' + messageType.name);
-            logger.info(...data);
-        }
         clients.forEach((client) => {
             this.send(client, messageType, ...data);
         });

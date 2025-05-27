@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import JassAppDispatcher from '../jassAppDispatcher';
 import JassAppConstants from '../jassAppConstants';
 
+
 export const GameSetupState = {
     CONNECTING: 'CONNECTING',
     SET_PLAYER_NAME: 'SET_PLAYER_NAME',

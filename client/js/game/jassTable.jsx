@@ -7,12 +7,16 @@ import JassCarpet from './jassCarpet.jsx';
 import Points from './points.jsx';
 import SpectatorControls from './spectatorControls.jsx';
 import WinnerNotification from './winnerNotification.jsx';
+import WiisNotification from './wiisNotification.jsx';
 
 export default React.createClass({
-
+    // when the store changes, copy its state into component state
     handleGameSetupState() {
         this.setState(GameStore.state);
     },
+
+    // invoked by the WiisNotification “Continue” button
+
 
     componentDidMount() {
         GameStore.addChangeListener(this.handleGameSetupState);
@@ -23,16 +27,20 @@ export default React.createClass({
     },
 
     render() {
-        let state = this.state || GameStore.state,
-            players = state.players || [],
-            playerSeating = state.playerSeating,
-            playerCards = state.playerCards,
-            tableCards = state.tableCards || [],
-            teams = state.teams || [];
+        const state = this.state || GameStore.state;
+        const {
+            players = [],
+            playerSeating,
+            playerCards,
+            tableCards = [],
+            teams = [],
+            status
+        } = state;
 
         return (
             <div id="jassTable">
                 <CardTypeSwitcher cardType={state.cardType} />
+
                 <JassCarpet
                     cardType={state.cardType}
                     players={players}
@@ -48,37 +56,46 @@ export default React.createClass({
                     lastStichCards={state.lastStichCards}
                     lastStichStartingPlayerIndex={state.lastStichStartingPlayerIndex}
                     showLastStich={state.showLastStich}
-                    status={state.status}
+                    status={status}
                 />
+
                 <Points teams={teams} showPoints={state.showPoints} />
-                {(() => {
-                    if (state.playerType === PlayerType.PLAYER) {
-                        return (<PlayerCards
-                            cards={playerCards}
-                            cardType={state.cardType}
-                            state={state.status}
-                            tableCards={state.tableCards}
-                            mode={state.mode}
-                            color={state.color}
-                        />);
-                    }
-                })()}
-                {(() => {
-                    if (state.status === GameState.REQUESTING_TRUMPF) {
-                        return <RequestTrumpf isGeschoben={state.isGeschoben} cardType={state.cardType} />;
-                    }
-                })()}
-                {(() => {
-                    if (state.playerType === PlayerType.SPECTATOR) {
-                        return <SpectatorControls />;
-                    }
-                })()}
-                {(() => {
-                    if (state.status === GameState.FINISHED) {
-                        return <WinnerNotification teams={teams} />;
-                    }
-                })()}
+
+                {state.playerType === PlayerType.PLAYER && (
+                    <PlayerCards
+                        cards={playerCards}
+                        cardType={state.cardType}
+                        state={status}
+                        tableCards={state.tableCards}
+                        mode={state.mode}
+                        color={state.color}
+                    />
+                )}
+
+                {status === GameState.REQUESTING_TRUMPF && (
+                    <RequestTrumpf
+                        isGeschoben={state.isGeschoben}
+                        cardType={state.cardType}
+                    />
+                )}
+
+                {state.playerType === PlayerType.SPECTATOR && <SpectatorControls />}
+
+                {/* Wiis‐Notification */}
+                {status === GameState.BROADCAST_WIIS && (
+                    <WiisNotification
+                        players={players}
+                        allWeise={state.BROADCAST_WIIS.allWeise}
+                        winningWeise={state.BROADCAST_WIIS.winningWeise}
+                        cardType={state.cardType}
+                    />
+                )}
+
+                {/* Winner‐Notification */}
+                {status === GameState.FINISHED && (
+                    <WinnerNotification teams={teams} />
+                )}
             </div>
         );
-    },
+    }
 });

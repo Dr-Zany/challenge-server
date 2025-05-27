@@ -2,6 +2,7 @@ import {EventEmitter} from 'events';
 import JassAppDispatcher from '../jassAppDispatcher';
 import JassAppConstants from '../jassAppConstants';
 import * as Card from '../../../shared/deck/card';
+import {Logger} from "../../../server/logger";
 
 export const GameState = {
     WAITING: 'WAITING',
@@ -14,6 +15,7 @@ export const GameState = {
     REQUESTING_CARDS_FROM_OTHER_PLAYERS: 'REQUESTING_CARDS_FROM_OTHER_PLAYERS',
     STICH: 'STICH',
     FINISHED: 'FINISHED',
+    BROADCAST_WIIS: 'BROADCAST_WIIS',
 };
 
 export const CardType = {
@@ -70,6 +72,7 @@ const GameStore = Object.assign(Object.create(EventEmitter.prototype), {
         this.removeListener('change', callback);
     },
 
+
     spectatorRendering() {
         const payload = spectatorEventQueue.shift();
         if (payload) {
@@ -82,11 +85,21 @@ const GameStore = Object.assign(Object.create(EventEmitter.prototype), {
             spectatorEventQueue.push(payload);
         } else {
             this.handlePayload(payload);
+
         }
+        Logger.info(this.state.status);
     },
     handlePayload(payload) {
         let action = payload.action;
         switch (action.actionType) {
+            case JassAppConstants.BROADCAST_WIIS:
+                this.state.BROADCAST_WIIS = {
+                    allWeise: action.data.allWiis,
+                    winningWeise: action.data.winningWiis
+                };
+                this.state.status = GameState.BROADCAST_WIIS;
+                this.emit('change');
+                break;
             case JassAppConstants.CHOOSE_EXISTING_SESSION_SPECTATOR:
                 this.state.playerType = PlayerType.SPECTATOR;
                 this.spectatorRendering();
@@ -143,8 +156,10 @@ const GameStore = Object.assign(Object.create(EventEmitter.prototype), {
                 this.emit('change');
                 break;
             case JassAppConstants.REQUEST_CARD:
+
                 this.state.status = GameState.REQUESTING_CARD;
                 this.emit('change');
+
                 break;
             case JassAppConstants.CHOOSE_CARD:
                 let chosenCard = Card.createFromObject(action.data);

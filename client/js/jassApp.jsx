@@ -24,7 +24,6 @@ const JassApp = React.createClass({
 
     render() {
         this.state = this.state || JassAppStore.state;
-
         return (
             <div>
                 <ErrorToast error={this.state.error}/>

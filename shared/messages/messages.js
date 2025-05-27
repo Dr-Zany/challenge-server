@@ -1,5 +1,6 @@
 import * as Card from '../deck/card';
 import {MessageType} from './messageType';
+import {Logger} from "../../server/logger";
 
 function createRequestPlayerName() {
     return {
@@ -208,11 +209,13 @@ function createError(data) {
 }
 
 function createBroadcastWiis(winningWiis, allWiis) {
+    Logger.info(winningWiis)
+    Logger.info(allWiis)
     return {
         type: MessageType.BROADCAST_WIIS.name,
         data: {
-            allWiis,
-            winningWiis,
+            allWiis: Object.fromEntries(allWiis),
+            winningWiis: Object.fromEntries(winningWiis),
         }
     }
 }

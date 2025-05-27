@@ -1,3 +1,4 @@
+import {Logger} from "../../server/logger";
 
 
 const Card = {
@@ -14,5 +15,7 @@ export function create(number, color) {
 }
 
 export function createFromObject(card) {
+    Logger.info('cfreating card')
+    Logger.info(card)
     return create(card.number, card.color);
 }

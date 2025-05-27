@@ -55,6 +55,9 @@ const ClientApi = {
     },
 
     broadcastWiis(winningWiis, allWiis) {
+        Logger.info('<-- Start Broadcast wiis: ');
+        Logger.info(winningWiis);
+        Logger.info(allWiis);
         this.clientCommunication.broadcast(this.clients, MessageType.BROADCAST_WIIS.name, winningWiis, allWiis);
     },
 

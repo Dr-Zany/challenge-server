@@ -528,3 +528,67 @@
     }
   }
 }
+/* full-screen dark overlay */
+#wiisNotification {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* larger modal */
+.wiis-modal {
+  position: relative;                /* for countdown positioning */
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  width: 80vw;                       /* 80% of viewport width */
+  max-width: 600px;                  /* but no more than 600px */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* countdown in top-right */
+.wiis-countdown {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 3em;
+  font-weight: bold;
+  color: #333;       /* optional: make it stand out */
+}
+
+/* card styling (small) */
+.wiis-card {
+  width: 75px;
+  height: auto;
+  margin: 2px;
+}
+
+/* optional highlighting of the winning run */
+.wiis-run.highlight {
+  border: 2px solid gold;
+}
+
+/* winner cards can have extra styling */
+.wiis-card.winner {
+  transform: scale(1.1);
+}
+
+/* Continue button styling */
+.wiis-button {
+  margin-top: 16px;
+  padding: 8px 16px;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.wiis-button:hover {
+  background: #0056b3;
+}
+
+

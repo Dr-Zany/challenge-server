@@ -4,6 +4,7 @@ import JassActions from '../jassActions';
 import * as messages from '../../../shared/messages/messages';
 import {MessageType} from '../../../shared/messages/messageType';
 import {SessionChoice} from '../../../shared/session/sessionChoice';
+import {Logger} from '../../../server/logger';
 
 const protocol = (process.env.NODE && ~process.env.NODE.indexOf('heroku')) ? 'wss' : 'ws';
 const serverAddress = `${protocol}://${window.location.host}`;
@@ -12,14 +13,20 @@ let webSocket;
 
 function sendJSONMessageToClient(messageType, ...data) {
     webSocket.send(JSON.stringify(messages.create(messageType, ...data)));
+
 }
 
 const ServerApi = {
     handleMessageFromServer: (messageEvent) => {
         let message = JSON.parse(messageEvent.data);
-
+        Logger.info('received message from server');
+        Logger.info(message);
         switch (message.type) {
             case MessageType.BAD_MESSAGE.name:
+                break;
+            case MessageType.BROADCAST_WIIS.name:
+                JassActions.broadcastWiis(message.data);
+                break;
             case MessageType.ERROR.name:
                 JassActions.throwError('SERVER', message.data);
                 break;

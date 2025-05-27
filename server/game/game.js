@@ -30,15 +30,22 @@ function transformErrorMessageToErrorObject(player, message) {
         data: player
     }));
 }
-
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 let Game = {
     currentRound: 0,
 
-    nextCycle(startPlayer) {
+    async nextCycle(startPlayer) {
         if (this.currentRound === 0) {
             logger.info('checking wiise');
-            this.checkWiise();
+            let isWiise = this.checkWiise();
+            if (isWiise) {
+                await sleep(10000)
+            }
+            isWiise = false;
         }
+
         if (this.currentRound < 9) {
             this.startPlayer = startPlayer || this.startPlayer;
             let cycle = Cycle.create(this.startPlayer, this.players, this.clientApi, this.gameType);
@@ -48,6 +55,7 @@ let Game = {
             });
         }
     },
+
 
     schieben() {
         for (let i = 0; i < this.players.length; i++) {
@@ -78,28 +86,30 @@ let Game = {
         const findWeise = (player, gameType, announceOrder) => {
             const weise = [];
             // Score-Mapping für Sequenzen
-            const seqScores = {3:20, 4:50, 5:100, 6:150, 7:200, 8:250, 9:300};
+            const seqScores = { 3: 20, 4: 50, 5: 100, 6: 150, 7: 200, 8: 250, 9: 300 };
 
             // 1) Gruppiere nach Farbe für Sequenzen & Stöck
             const byColor = player.cards.reduce((g, c) => {
                 (g[c.color] = g[c.color] || []).push(c);
                 return g;
             }, {});
-            logger.info('grouped')
+            logger.info('grouped by color for player', player.id);
+
             Object.entries(byColor).forEach(([color, cards]) => {
                 cards.sort((a, b) => a.number - b.number);
 
                 // A) Sequenzen ≥3
                 let start = 0;
                 for (let i = 1; i <= cards.length; i++) {
-                    if (i < cards.length && cards[i].number === cards[i - 1].number + 1) continue;
-
+                    if (i < cards.length && cards[i].number === cards[i - 1].number + 1) {
+                        continue;
+                    }
                     const len = i - start;
                     if (len >= 3) {
                         const run = cards.slice(start, i);
                         const score = seqScores[len] || 0;
                         const isTrump = (gameType.mode === GameMode.TRUMPF && color === gameType.trumpfColor);
-                        logger.info('FOUND wiis' + run);
+                        logger.info(`FOUND sequence of length ${len} for player ${player.id}`);
                         weise.push({
                             type: 'sequence',
                             cards: run,
@@ -114,7 +124,7 @@ let Game = {
 
                 // B) Stöck (Ober+König), nur im Trumpf
                 if (gameType.mode === GameMode.TRUMPF && color === gameType.trumpfColor) {
-                    const hasOber = cards.some(c => c.number === 12);
+                    const hasOber   = cards.some(c => c.number === 12);
                     const hasKoenig = cards.some(c => c.number === 13);
                     if (hasOber && hasKoenig) {
                         const stoeckCards = cards.filter(c => c.number === 12 || c.number === 13);
@@ -129,7 +139,7 @@ let Game = {
                     }
                 }
             });
-            logger.info('grouping for 4')
+
             // 2) Gruppiere nach number für Vierlinge
             const byNumber = player.cards.reduce((g, c) => {
                 (g[c.number] = g[c.number] || []).push(c);
@@ -139,9 +149,10 @@ let Game = {
                 if (same.length === 4) {
                     const n = Number(num);
                     let score;
-                    if (n === 11) score = 200;        // 4 Unter
-                    else if (n === 9) score = 150;   // 4 Neuner
-                    else score = 100;                // alle anderen Vierlinge
+                    if (n === 11)       score = 200; // 4 Unter
+                    else if (n === 9)   score = 150; // 4 Neuner
+                    else                score = 100; // alle anderen Vierlinge
+
                     weise.push({
                         type: 'fourKind',
                         cards: same,
@@ -152,71 +163,107 @@ let Game = {
                     });
                 }
             });
-            logger.info('alle weise')
-            logger.info(weise)
+
+            logger.info('all found weise for player', player.id, weise);
             return weise;
         };
-        logger.info('finding all wiis')
+
+        logger.info('finding all wiis for each player');
         // 3) Für alle Spieler alle Weisen finden
         const playerWeise = this.players.map((player, idx) => ({
             player,
             allWeise: findWeise(player, this.gameType, idx)
         }));
-        if (playerWeise.every(pw => pw.allWeise.length === 0)) return;
 
-        logger.info(playerWeise)
-        logger.info('finding best wiis')
-        // 4) Aus allen Weisen den höchsten pro Spieler bestimmen
-        // Bestimme besten Weis pro Spieler
-        const orderType = ['sequence','fourKind','stoeck'];
+        // Wenn niemand eine Weis hat, abbrechen
+        if (playerWeise.every(pw => pw.allWeise.length === 0)) {
+            logger.info('no weis found for any player');
+            return;
+        }
+
+        logger.info('selecting best weis per player');
+        // 4) Bestes Weis pro Spieler bestimmen (score-first)
         playerWeise.forEach(pw => {
-            if (pw.allWeise.length > 0) {
+            if (pw.allWeise.length === 0) {
+                pw.winningWeise = null;
+            } else {
                 pw.winningWeise = pw.allWeise.reduce((best, w) => {
                     if (!best) return w;
-                    if (orderType.indexOf(w.type) < orderType.indexOf(best.type)) return w;
-                    if (orderType.indexOf(w.type) > orderType.indexOf(best.type)) return best;
-                    if (w.highest !== best.highest) return w.highest > best.highest ? w : best;
-                    if (w.isTrump !== best.isTrump) return w.isTrump ? w : best;
+                    // 1) Higher score wins
+                    if (w.score !== best.score) {
+                        return w.score > best.score ? w : best;
+                    }
+                    // 2) Trump run wins over non-trump
+                    if (w.isTrump !== best.isTrump) {
+                        return w.isTrump ? w : best;
+                    }
+                    // 3) Longer run/fourKind wins
+                    if (w.cards.length !== best.cards.length) {
+                        return w.cards.length > best.cards.length ? w : best;
+                    }
+                    // 4) Earlier announcement wins
                     return w.order < best.order ? w : best;
                 }, null);
-            } else {
-                pw.winningWeise = null;
             }
         });
-        // Filtere nur Spieler mit einem Weis
-        const contenders = playerWeise.filter(pw => pw.winningWeise);
-        // 4) Sieger bestimmen
-        const victor=contenders.reduce((win,cur)=>{
-            const a=win.winningWeise,b=cur.winningWeise;
-            if(orderType.indexOf(b.type)<orderType.indexOf(a.type)) return cur;
-            if(orderType.indexOf(b.type)>orderType.indexOf(a.type)) return win;
-            if(b.highest!==a.highest) return b.highest>a.highest?cur:win;
-            if(b.isTrump!==a.isTrump) return b.isTrump?cur:win;
-            return b.order<a.order?cur:win;
+
+        // 5) Nur Spieler mit einer gewinnenden Weis betrachten
+        const contenders = playerWeise.filter(pw => pw.winningWeise !== null);
+
+        // 6) Gesamtsieger bestimmen (gleiche score-first Logik)
+        const victorPw = contenders.reduce((bestPw, curPw) => {
+            const a = bestPw.winningWeise;
+            const b = curPw.winningWeise;
+
+            if (b.score !== a.score) {
+                return b.score > a.score ? curPw : bestPw;
+            }
+            if (b.isTrump !== a.isTrump) {
+                return b.isTrump ? curPw : bestPw;
+            }
+            if (b.cards.length !== a.cards.length) {
+                return b.cards.length > a.cards.length ? curPw : bestPw;
+            }
+            return curPw.winningWeise.order < a.order ? curPw : bestPw;
         });
-        // 5) Tie-Check: mehrere gleiche Sieger?
-        const tied=contenders.filter(pw=>{
-            const w=pw.winningWeise, v=victor.winningWeise;
-            return w.type===v.type&&w.highest===v.highest&&w.isTrump===v.isTrump;
+
+        // 7) Tie-Check: exakter Gleichstand?
+        const top = victorPw.winningWeise;
+        const tied = contenders.filter(pw => {
+            const w = pw.winningWeise;
+            return (
+                w.score === top.score &&
+                w.isTrump === top.isTrump &&
+                w.cards.length === top.cards.length &&
+                w.order === top.order
+            );
         });
-        if(tied.length>1){
-            throw new Error('Mehrere unentschiedene Sieger: '+tied.map(p=>p.player.id).join(','));
+        if (tied.length > 1) {
+            logger.info('tie detected, no victor this round:', tied.map(pw => pw.player.id));
+            return;
         }
-        // 6) Maps speichern
-        this.allWeiseMap=new Map(playerWeise.map(pw=>[pw.player.id,pw.allWeise.map(w=>w.cards)]));
-        this.winningWeiseMap=new Map([[victor.player.id,victor.winningWeise.cards]]);
-        this.victor=victor.player;
-        logger.info(this.winningWeiseMap)
-        logger.info(this.allWeiseMap)
-        // 7) Punkte gutschreiben
-        playerWeise.forEach(({player,winningWeise})=>{
-            if(winningWeise&&player===this.victor){
-                let team = player.team
-                team.points=(team.points||0)+winningWeise.score;
-                logger.info(team.points)
+
+        // 8) Ergebnis-Mappings speichern
+        const victorPlayer        = victorPw.player;
+        const winningWeiseCards   = victorPw.winningWeise.cards;
+
+        this.allWeiseMap     = new Map(playerWeise.map(pw => [ pw.player.id, pw.allWeise.map(w => w.cards) ]));
+        this.winningWeiseMap = new Map([[ victorPlayer.id, winningWeiseCards ]]);
+        this.victor          = victorPlayer;
+
+        // 9) Punkte gutschreiben
+        playerWeise.forEach(({ player, winningWeise }) => {
+            if (winningWeise && player === this.victor) {
+                const team = player.team;
+                team.points = (team.points || 0) + winningWeise.score;
+                logger.info(`awarded ${winningWeise.score} points to team of player ${player.id}`);
             }
         });
-        handleWiise(this, this.winningWeiseMap, this.allWeiseMap );
+
+        // 10) Broadcast triggern
+        handleWiise(this, this.winningWeiseMap, this.allWeiseMap);
+
+        return true;
     }
 
 
